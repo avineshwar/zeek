@@ -4,30 +4,29 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-
 #include <netinet/in.h>
-
 #include <arpa/inet.h>
 
 #include "Reporter.h"
 #include "net_util.h"
 #include "IPAddr.h"
 #include "IP.h"
+#include "Aligner.h"
 
 // - adapted from tcpdump
 // Returns the ones-complement checksum of a chunk of b short-aligned bytes.
 int ones_complement_checksum(const void* p, int b, uint32_t sum)
 	{
-	const unsigned char* sp = (unsigned char*) p;
+	// Make sure this is aligned to a uint16_t when typecasting it or the code
+	// below may crash due to undefined behavior.
+	const uint16_t* sp = static_cast<const uint16_t*>(p);
 
-	b /= 2;	// convert to count of short's
+	// Convert the byte count to a count of shorts
+	b /= 2;
 
-	/* No need for endian conversions. */
+	// No need for endian conversions
 	while ( --b >= 0 )
-		{
-		sum += *sp + (*(sp+1) << 8);
-		sp += 2;
-		}
+		sum += *sp++;
 
 	while ( sum > 0xffff )
 		sum = (sum & 0xffff) + (sum >> 16);
@@ -88,6 +87,8 @@ int icmp6_checksum(const struct icmp* icmpp, const IP_Hdr* ip, int len)
 	// ICMP6 uses the same checksum function as ICMP4 but a different
 	// pseudo-header over which it is computed.
 	uint32_t sum;
+	uint32_t l = htonl(len);
+	uint32_t addl_pseudo = htons(IPPROTO_ICMPV6);
 
 	if ( len % 2 == 1 )
 		// Add in pad byte.
@@ -98,12 +99,8 @@ int icmp6_checksum(const struct icmp* icmpp, const IP_Hdr* ip, int len)
 	// Pseudo-header as for UDP over IPv6 above.
 	sum = ones_complement_checksum(ip->SrcAddr(), sum);
 	sum = ones_complement_checksum(ip->DstAddr(), sum);
-	uint32_t l = htonl(len);
 	sum = ones_complement_checksum((void*) &l, 4, sum);
-
-	uint32_t addl_pseudo = htons(IPPROTO_ICMPV6);
 	sum = ones_complement_checksum((void*) &addl_pseudo, 4, sum);
-
 	sum = ones_complement_checksum((void*) icmpp, len, sum);
 
 	return sum;
