@@ -1,17 +1,19 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include "CompHash.h"
+
 #include "zeek-config.h"
 
-#include "CompHash.h"
+#include <vector>
+#include <map>
+
 #include "BroString.h"
 #include "Dict.h"
 #include "Val.h"
 #include "RE.h"
 #include "Reporter.h"
 #include "Func.h"
-
-#include <vector>
-#include <map>
+#include "Aligner.h"
 
 CompositeHash::CompositeHash(IntrusivePtr<TypeList> composite_type)
 	: type(std::move(composite_type))
@@ -78,7 +80,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 	if ( optional )
 		{
 		// Add a marker saying whether the optional field is set.
-		char* kp = AlignAndPadType<char>(kp0);
+		char* kp = Aligner::AlignAndPadType<char>(kp0);
 		*kp = ( v ? 1 : 0);
 		kp0 = reinterpret_cast<char*>(kp+1);
 
@@ -96,7 +98,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 	switch ( t ) {
 	case TYPE_INTERNAL_INT:
 		{
-		bro_int_t* kp = AlignAndPadType<bro_int_t>(kp0);
+		bro_int_t* kp = Aligner::AlignAndPadType<bro_int_t>(kp0);
 		*kp = v->ForceAsInt();
 		kp1 = reinterpret_cast<char*>(kp+1);
 		}
@@ -104,7 +106,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 	case TYPE_INTERNAL_UNSIGNED:
 		{
-		bro_uint_t* kp = AlignAndPadType<bro_uint_t>(kp0);
+		bro_uint_t* kp = Aligner::AlignAndPadType<bro_uint_t>(kp0);
 		*kp = v->ForceAsUInt();
 		kp1 = reinterpret_cast<char*>(kp+1);
 		}
@@ -112,7 +114,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 	case TYPE_INTERNAL_ADDR:
 		{
-		uint32_t* kp = AlignAndPadType<uint32_t>(kp0);
+		uint32_t* kp = Aligner::AlignAndPadType<uint32_t>(kp0);
 		v->AsAddr().CopyIPv6(kp);
 		kp1 = reinterpret_cast<char*>(kp+4);
 		}
@@ -120,7 +122,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 	case TYPE_INTERNAL_SUBNET:
 		{
-		uint32_t* kp = AlignAndPadType<uint32_t>(kp0);
+		uint32_t* kp = Aligner::AlignAndPadType<uint32_t>(kp0);
 		v->AsSubNet().Prefix().CopyIPv6(kp);
 		kp[4] = v->AsSubNet().Length();
 		kp1 = reinterpret_cast<char*>(kp+5);
@@ -129,7 +131,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 	case TYPE_INTERNAL_DOUBLE:
 		{
-		double* kp = AlignAndPadType<double>(kp0);
+		double* kp = Aligner::AlignAndPadType<double>(kp0);
 		*kp = v->InternalDouble();
 		kp1 = reinterpret_cast<char*>(kp+1);
 		}
@@ -141,7 +143,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 		switch ( v->Type()->Tag() ) {
 		case TYPE_FUNC:
 			{
-			uint32_t* kp = AlignAndPadType<uint32_t>(kp0);
+			uint32_t* kp = Aligner::AlignAndPadType<uint32_t>(kp0);
 			*kp = v->AsFunc()->GetUniqueFuncID();
 			kp1 = reinterpret_cast<char*>(kp+1);
 			break;
@@ -157,7 +159,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 			uint64_t* kp;
 			for ( int i = 0; i < 2; i++ )
 				{
-				kp = AlignAndPadType<uint64_t>(kp0+i);
+				kp = Aligner::AlignAndPadType<uint64_t>(kp0+i);
 				*kp = strlen(texts[i]) + 1;
 				}
 
@@ -200,7 +202,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 		case TYPE_TABLE:
 			{
-			int* kp = AlignAndPadType<int>(kp0);
+			int* kp = Aligner::AlignAndPadType<int>(kp0);
 			TableVal* tv = v->AsTableVal();
 			*kp = tv->Size();
 			kp1 = reinterpret_cast<char*>(kp+1);
@@ -265,7 +267,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 		case TYPE_VECTOR:
 			{
-			unsigned int* kp = AlignAndPadType<unsigned int>(kp0);
+			unsigned int* kp = Aligner::AlignAndPadType<unsigned int>(kp0);
 			VectorVal* vv = v->AsVectorVal();
 			VectorType* vt = v->Type()->AsVectorType();
 			*kp = vv->Size();
@@ -273,10 +275,10 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 			for ( unsigned int i = 0; i < vv->Size(); ++i )
 				{
 				Val* val = vv->Lookup(i);
-				unsigned int* kp = AlignAndPadType<unsigned int>(kp1);
+				unsigned int* kp = Aligner::AlignAndPadType<unsigned int>(kp1);
 				*kp = i;
 				kp1 = reinterpret_cast<char*>(kp+1);
-				kp = AlignAndPadType<unsigned int>(kp1);
+				kp = Aligner::AlignAndPadType<unsigned int>(kp1);
 				*kp = val ? 1 : 0;
 				kp1 = reinterpret_cast<char*>(kp+1);
 
@@ -292,7 +294,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 
 		case TYPE_LIST:
 			{
-			int* kp = AlignAndPadType<int>(kp0);
+			int* kp = Aligner::AlignAndPadType<int>(kp0);
 			ListVal* lv = v->AsListVal();
 			*kp = lv->Length();
 			kp1 = reinterpret_cast<char*>(kp+1);
@@ -319,7 +321,7 @@ char* CompositeHash::SingleValHash(int type_check, char* kp0,
 	case TYPE_INTERNAL_STRING:
 		{
 		// Align to int for the length field.
-		int* kp = AlignAndPadType<int>(kp0);
+		int* kp = Aligner::AlignAndPadType<int>(kp0);
 		const BroString* sval = v->AsString();
 
 		*kp = sval->Len();	// so we can recover the value
@@ -461,7 +463,7 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 	InternalTypeTag t = bt->InternalType();
 
 	if ( optional )
-		sz = SizeAlign(sz, sizeof(char));
+		sz = Aligner::SizeAlign(sz, sizeof(char));
 
 	if ( type_check && v )
 		{
@@ -473,21 +475,21 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 	switch ( t ) {
 	case TYPE_INTERNAL_INT:
 	case TYPE_INTERNAL_UNSIGNED:
-		sz = SizeAlign(sz, sizeof(bro_int_t));
+		sz = Aligner::SizeAlign(sz, sizeof(bro_int_t));
 		break;
 
 	case TYPE_INTERNAL_ADDR:
-		sz = SizeAlign(sz, sizeof(uint32_t));
+		sz = Aligner::SizeAlign(sz, sizeof(uint32_t));
 		sz += sizeof(uint32_t) * 3;	// to make a total of 4 words
 		break;
 
 	case TYPE_INTERNAL_SUBNET:
-		sz = SizeAlign(sz, sizeof(uint32_t));
+		sz = Aligner::SizeAlign(sz, sizeof(uint32_t));
 		sz += sizeof(uint32_t) * 4;	// to make a total of 5 words
 		break;
 
 	case TYPE_INTERNAL_DOUBLE:
-		sz = SizeAlign(sz, sizeof(double));
+		sz = Aligner::SizeAlign(sz, sizeof(double));
 		break;
 
 	case TYPE_INTERNAL_VOID:
@@ -496,7 +498,7 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 		switch ( bt->Tag() ) {
 		case TYPE_FUNC:
 			{
-			sz = SizeAlign(sz, sizeof(uint32_t));
+			sz = Aligner::SizeAlign(sz, sizeof(uint32_t));
 			break;
 			}
 
@@ -505,7 +507,7 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 			if ( ! v )
 				return (optional && ! calc_static_size) ? sz : 0;
 
-			sz = SizeAlign(sz, 2 * sizeof(uint64_t));
+			sz = Aligner::SizeAlign(sz, 2 * sizeof(uint64_t));
 			sz += strlen(v->AsPattern()->PatternText())
 				+ strlen(v->AsPattern()->AnywherePatternText()) + 2; // 2 for null terminators
 			break;
@@ -538,7 +540,7 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 			if ( ! v )
 				return (optional && ! calc_static_size) ? sz : 0;
 
-			sz = SizeAlign(sz, sizeof(int));
+			sz = Aligner::SizeAlign(sz, sizeof(int));
 			TableVal* tv = const_cast<TableVal*>(v->AsTableVal());
 			ListVal* lv = tv->ConvertToList();
 			for ( int i = 0; i < tv->Size(); ++i )
@@ -575,13 +577,13 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 			if ( ! v )
 				return (optional && ! calc_static_size) ? sz : 0;
 
-			sz = SizeAlign(sz, sizeof(unsigned int));
+			sz = Aligner::SizeAlign(sz, sizeof(unsigned int));
 			VectorVal* vv = const_cast<VectorVal*>(v->AsVectorVal());
 			for ( unsigned int i = 0; i < vv->Size(); ++i )
 				{
 				Val* val = vv->Lookup(i);
-				sz = SizeAlign(sz, sizeof(unsigned int));
-				sz = SizeAlign(sz, sizeof(unsigned int));
+				sz = Aligner::SizeAlign(sz, sizeof(unsigned int));
+				sz = Aligner::SizeAlign(sz, sizeof(unsigned int));
 				if ( val )
 					sz = SingleTypeKeySize(bt->AsVectorType()->YieldType(),
 					                       val, type_check, sz, false,
@@ -597,7 +599,7 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 			if ( ! v )
 				return (optional && ! calc_static_size) ? sz : 0;
 
-			sz = SizeAlign(sz, sizeof(int));
+			sz = Aligner::SizeAlign(sz, sizeof(int));
 			ListVal* lv = const_cast<ListVal*>(v->AsListVal());
 			for ( int i = 0; i < lv->Length(); ++i )
 				{
@@ -624,7 +626,7 @@ int CompositeHash::SingleTypeKeySize(BroType* bt, const Val* v,
 			return (optional && ! calc_static_size) ? sz : 0;
 
 		// Factor in length field.
-		sz = SizeAlign(sz, sizeof(int));
+		sz = Aligner::SizeAlign(sz, sizeof(int));
 		sz += v->AsString()->Len();
 		break;
 
@@ -659,65 +661,6 @@ int CompositeHash::ComputeKeySize(const Val* v, int type_check, bool calc_static
 		}
 
 	return sz;
-	}
-
-namespace
-	{
-	inline bool is_power_of_2(bro_uint_t x)
-		{
-		return ((x - 1) & x) == 0;
-		}
-	}
-
-const void* CompositeHash::Align(const char* ptr, unsigned int size) const
-	{
-	if ( ! size )
-		return ptr;
-
-	ASSERT(is_power_of_2(size));
-
-	unsigned int mask = size - 1;	// Assume size is a power of 2.
-	unsigned long l_ptr = reinterpret_cast<unsigned long>(ptr);
-	unsigned long offset = l_ptr & mask;
-
-	if ( offset > 0 )
-		return reinterpret_cast<const void*>(ptr - offset + size);
-	else
-		return reinterpret_cast<const void*>(ptr);
-	}
-
-void* CompositeHash::AlignAndPad(char* ptr, unsigned int size) const
-	{
-	if ( ! size )
-		return ptr;
-
-	ASSERT(is_power_of_2(size));
-
-	unsigned int mask = size - 1;	// Assume size is a power of 2.
-	while ( (reinterpret_cast<unsigned long>(ptr) & mask) != 0 )
-		// Not aligned - zero pad.
-		*ptr++ = '\0';
-
-	return reinterpret_cast<void *>(ptr);
-	}
-
-int CompositeHash::SizeAlign(int offset, unsigned int size) const
-	{
-	if ( ! size )
-		return offset;
-
-	ASSERT(is_power_of_2(size));
-
-	unsigned int mask = size - 1;	// Assume size is a power of 2.
-	if ( offset & mask )
-		{
-		offset &= ~mask;	// Round down.
-		offset += size;		// Round up.
-		}
-
-	offset += size;		// Add in size.
-
-	return offset;
 	}
 
 ListVal* CompositeHash::RecoverVals(const HashKey* k) const
@@ -755,7 +698,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 
 	if ( optional )
 		{
-		const char* kp = AlignType<char>(kp0);
+		const char* kp = Aligner::AlignType<char>(kp0);
 		kp0 = kp1 = reinterpret_cast<const char*>(kp+1);
 
 		if ( ! *kp )
@@ -768,7 +711,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 	switch ( it ) {
 	case TYPE_INTERNAL_INT:
 		{
-		const bro_int_t* const kp = AlignType<bro_int_t>(kp0);
+		const bro_int_t* const kp = Aligner::AlignType<bro_int_t>(kp0);
 		kp1 = reinterpret_cast<const char*>(kp+1);
 
 		if ( tag == TYPE_ENUM )
@@ -787,7 +730,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 
 	case TYPE_INTERNAL_UNSIGNED:
 		{
-		const bro_uint_t* const kp = AlignType<bro_uint_t>(kp0);
+		const bro_uint_t* const kp = Aligner::AlignType<bro_uint_t>(kp0);
 		kp1 = reinterpret_cast<const char*>(kp+1);
 
 		switch ( tag ) {
@@ -810,7 +753,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 
 	case TYPE_INTERNAL_DOUBLE:
 		{
-		const double* const kp = AlignType<double>(kp0);
+		const double* const kp = Aligner::AlignType<double>(kp0);
 		kp1 = reinterpret_cast<const char*>(kp+1);
 
 		if ( tag == TYPE_INTERVAL )
@@ -822,7 +765,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 
 	case TYPE_INTERNAL_ADDR:
 		{
-		const uint32_t* const kp = AlignType<uint32_t>(kp0);
+		const uint32_t* const kp = Aligner::AlignType<uint32_t>(kp0);
 		kp1 = reinterpret_cast<const char*>(kp+4);
 
 		IPAddr addr(IPv6, kp, IPAddr::Network);
@@ -842,7 +785,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 
 	case TYPE_INTERNAL_SUBNET:
 		{
-		const uint32_t* const kp = AlignType<uint32_t>(kp0);
+		const uint32_t* const kp = Aligner::AlignType<uint32_t>(kp0);
 		kp1 = reinterpret_cast<const char*>(kp+5);
 		pval = new SubNetVal(kp, kp[4]);
 		}
@@ -854,7 +797,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 		switch ( t->Tag() ) {
 		case TYPE_FUNC:
 			{
-			const uint32_t* const kp = AlignType<uint32_t>(kp0);
+			const uint32_t* const kp = Aligner::AlignType<uint32_t>(kp0);
 			kp1 = reinterpret_cast<const char*>(kp+1);
 
 			Func* f = Func::GetFuncPtrByID(*kp);
@@ -892,7 +835,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 				}
 			else
 				{
-				const uint64_t* const len = AlignType<uint64_t>(kp0);
+				const uint64_t* const len = Aligner::AlignType<uint64_t>(kp0);
 
 				kp1 = reinterpret_cast<const char*>(len+2);
 				re = new RE_Matcher(kp1, kp1 + len[0]);
@@ -948,7 +891,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 		case TYPE_TABLE:
 			{
 			int n;
-			const int* const kp = AlignType<int>(kp0);
+			const int* const kp = Aligner::AlignType<int>(kp0);
 			n = *kp;
 			kp1 = reinterpret_cast<const char*>(kp+1);
 			TableType* tt = t->AsTableType();
@@ -981,17 +924,17 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 		case TYPE_VECTOR:
 			{
 			unsigned int n;
-			const unsigned int* kp = AlignType<unsigned int>(kp0);
+			const unsigned int* kp = Aligner::AlignType<unsigned int>(kp0);
 			n = *kp;
 			kp1 = reinterpret_cast<const char*>(kp+1);
 			VectorType* vt = t->AsVectorType();
 			VectorVal* vv = new VectorVal(vt);
 			for ( unsigned int i = 0; i < n; ++i )
 				{
-				kp = AlignType<unsigned int>(kp1);
+				kp = Aligner::AlignType<unsigned int>(kp1);
 				unsigned int index = *kp;
 				kp1 = reinterpret_cast<const char*>(kp+1);
-				kp = AlignType<unsigned int>(kp1);
+				kp = Aligner::AlignType<unsigned int>(kp1);
 				unsigned int have_val = *kp;
 				kp1 = reinterpret_cast<const char*>(kp+1);
 				Val* value = 0;
@@ -1008,7 +951,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 		case TYPE_LIST:
 			{
 			int n;
-			const int* const kp = AlignType<int>(kp0);
+			const int* const kp = Aligner::AlignType<int>(kp0);
 			n = *kp;
 			kp1 = reinterpret_cast<const char*>(kp+1);
 			TypeList* tl = t->AsTypeList();
@@ -1046,7 +989,7 @@ const char* CompositeHash::RecoverOneVal(const HashKey* k, const char* kp0,
 			}
 		else
 			{
-			const int* const kp = AlignType<int>(kp0);
+			const int* const kp = Aligner::AlignType<int>(kp0);
 			n = *kp;
 			kp1 = reinterpret_cast<const char*>(kp+1);
 			}

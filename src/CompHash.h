@@ -38,36 +38,6 @@ protected:
 				  const char* kp, const char* const k_end,
 				  BroType* t, Val*& pval, bool optional) const;
 
-	// Rounds the given pointer up to the nearest multiple of the
-	// given size, if not already a multiple.
-	const void* Align(const char* ptr, unsigned int size) const;
-
-	// Rounds the given pointer up to the nearest multiple of the
-	// given size, padding the skipped region with 0 bytes.
-	void* AlignAndPad(char* ptr, unsigned int size) const;
-
-	// Returns offset+size rounded up so it can correctly align data
-	// of the given size.
-	int SizeAlign(int offset, unsigned int size) const;
-
-	template<class T>
-	T* AlignAndPadType(char* ptr) const
-		{
-		return reinterpret_cast<T*>(AlignAndPad(ptr, sizeof(T)));
-		}
-
-	template<class T>
-	const T* AlignType(const char* ptr) const
-		{
-		return reinterpret_cast<const T*>(Align(ptr, sizeof(T)));
-		}
-
-	template<class T>
-	int SizeAlignType(int offset) const
-		{
-		return SizeAlign(offset, sizeof(T));
-		}
-
 	// Compute the size of the composite key.  If v is non-nil then
 	// the value is computed for the particular list of values.
 	// Returns 0 if the key has an indeterminant size (if v not given),
