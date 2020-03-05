@@ -8,8 +8,7 @@ namespace analyzer { namespace teredo {
 
 class Teredo_Analyzer : public analyzer::Analyzer {
 public:
-	explicit Teredo_Analyzer(Connection* conn) : Analyzer("TEREDO", conn),
-	                                    valid_orig(false), valid_resp(false)
+	explicit Teredo_Analyzer(Connection* conn) : Analyzer("TEREDO", conn)
 		{}
 
 	~Teredo_Analyzer() override
@@ -48,14 +47,13 @@ public:
 		}
 
 protected:
-	bool valid_orig;
-	bool valid_resp;
+	bool valid_orig = false;
+	bool valid_resp = false;
 };
 
 class TeredoEncapsulation {
 public:
-	explicit TeredoEncapsulation(const Teredo_Analyzer* ta)
-		: inner_ip(0), origin_indication(0), auth(0), analyzer(ta)
+	explicit TeredoEncapsulation(const Teredo_Analyzer* ta) : analyzer(ta)
 		{}
 
 	/**
@@ -82,10 +80,10 @@ protected:
 	void Weird(const char* name) const
 		{ analyzer->Weird(name); }
 
-	const u_char* inner_ip;
-	const u_char* origin_indication;
-	const u_char* auth;
+	const u_char* inner_ip = nullptr;
+	const u_char* origin_indication = nullptr;
+	const u_char* auth = nullptr;
 	const Teredo_Analyzer* analyzer;
 };
 
-} } // namespace analyzer::* 
+} } // namespace analyzer::*
