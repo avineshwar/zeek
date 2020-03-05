@@ -17,6 +17,13 @@ void Teredo_Analyzer::Done()
 	Event(udp_session_done);
 	}
 
+TeredoEncapsulation::~TeredoEncapsulation()
+	{
+	delete [] origin_indication;
+	delete [] auth;
+	delete [] inner_ip;
+	}
+
 bool TeredoEncapsulation::DoParse(const u_char* data, int& len,
                                   bool found_origin, bool found_auth)
 	{
@@ -41,7 +48,8 @@ bool TeredoEncapsulation::DoParse(const u_char* data, int& len,
 			return false;
 			}
 
-		origin_indication = data;
+		origin_indication = new u_char[8];
+		memcpy(origin_indication, data, 8);
 		len -= 8;
 		data += 8;
 		return DoParse(data, len, true, found_auth);
@@ -71,7 +79,8 @@ bool TeredoEncapsulation::DoParse(const u_char* data, int& len,
 			return false;
 			}
 
-		auth = data;
+		auth = new u_char[tot_len];
+		memcpy(auth, data, tot_len);
 		len -= tot_len;
 		data += tot_len;
 		return DoParse(data, len, found_origin, true);
@@ -89,7 +98,8 @@ bool TeredoEncapsulation::DoParse(const u_char* data, int& len,
 		// There's at least a possible IPv6 header, we'll decide what to do
 		// later if the payload length field doesn't match the actual length
 		// of the packet.
-		inner_ip = data;
+		inner_ip = new u_char[len];
+		memcpy(inner_ip, data, len);
 		return true;
 		}
 
@@ -98,9 +108,9 @@ bool TeredoEncapsulation::DoParse(const u_char* data, int& len,
 
 RecordVal* TeredoEncapsulation::BuildVal(const IP_Hdr* inner) const
 	{
-	static RecordType* teredo_hdr_type = 0;
-	static RecordType* teredo_auth_type = 0;
-	static RecordType* teredo_origin_type = 0;
+	static RecordType* teredo_hdr_type = nullptr;
+	static RecordType* teredo_auth_type = nullptr;
+	static RecordType* teredo_origin_type = nullptr;
 
 	if ( ! teredo_hdr_type )
 		{

@@ -56,6 +56,8 @@ public:
 	explicit TeredoEncapsulation(const Teredo_Analyzer* ta) : analyzer(ta)
 		{}
 
+	~TeredoEncapsulation();
+
 	/**
 	 * Returns whether input data parsed as a valid Teredo encapsulation type.
 	 * If it was valid, the len argument is decremented appropriately.
@@ -80,9 +82,9 @@ protected:
 	void Weird(const char* name) const
 		{ analyzer->Weird(name); }
 
-	const u_char* inner_ip = nullptr;
-	const u_char* origin_indication = nullptr;
-	const u_char* auth = nullptr;
+	u_char* inner_ip = nullptr;
+	u_char* origin_indication = nullptr;
+	u_char* auth = nullptr;
 	const Teredo_Analyzer* analyzer;
 };
 
